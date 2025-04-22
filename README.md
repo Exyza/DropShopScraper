@@ -7,6 +7,7 @@ It is VERY simple, and will need continuted work to set it in line with the visi
 Further edits for the ebay scraper include:
 - Adding better parsing functions in order to remove data unrelated to search queries
 - Performing necessary data transformaitons so that this data can be used in a back-end SQL database
+- Add better parsing functions to accurately represent all queries
 ---
 Further edits for the scraper overall:
 - Adding functionality such that front-end user searches are uses for Web Application queries
