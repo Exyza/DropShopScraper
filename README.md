@@ -10,7 +10,7 @@ Further edits for the ebay scraper include:
 - (ADDED SOME FUNCTIONALITY 04/22/2025) Add better parsing functions to accurately represent all queries
 ---
 Further edits for the scraper overall:
-- Adding functionality such that front-end user searches are uses for Web Application queries
+- Adding functionality such that front-end user searches are used for Web Application queries
 - Adding functionality so that any further website parsers provide accurate data related to the search
 - Fixing the major bug in aliexpress_scraper.py's inability to properly mine out product title and price data
 ---
