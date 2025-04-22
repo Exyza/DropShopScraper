@@ -1,36 +1,57 @@
-# ebay_scraper.py
-#!/usr/bin/env python3
+# ebay_scraper.py                                                                                                                                                                             
+#!/usr/bin/env python3                                                                                                                                                                        
+                                                                                                                                                                                              
+import re                                                                                                                                                                                     
+import requests                                                                                                                                                                               
+from bs4 import BeautifulSoup, SoupStrainer                                                                                                                                                   
+from urllib.parse import quote_plus                                                                                                                                                           
+                                                                                                                                                                                              
+                                                                                                                                                                                              
+def scrape_ebay(query):                                                                                                                                                                       
+    """                                                                                                                                                                                       
+    Fetches eBay search results for `query`, extracts titles and prices,                                                                                                                      
+    and returns a list of (title, price) tuples in the order they appear.                                                                                                                     
+                                                                                                                                                                                              
+    Post-processing removes duplicate listings and skips any "Shop on eBay"                                                                                                                   
+    placeholders, and strips literal "New Listing" from titles.                                                                                                                               
+    """                                                                                                                                                                                       
+    url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}"                                                                                                                         
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}                                                                                                                     
+    response = requests.get(url, headers=headers)                                                                                                                                             
+    response.raise_for_status()                                                                                                                                                               
+                                                                                                                                                                                              
+    # Only parse <li> items with data-marko-key                                                                                                                                               
+    strainer = SoupStrainer(                                                                                                                                                                  
+        "li",                                                                                                                                                                                 
+        attrs={"data-marko-key": re.compile(r".+")}                                                                                                                                           
+    )                                                                                                                                                                                         
+    soup = BeautifulSoup(response.text, "html.parser", parse_only=strainer)
 
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import quote_plus
-
-def scrape_ebay(query):
-    """
-    Fetches the first page of eBay search results for the given query
-    and returns a list of (title, price) tuples.
-    """
-    url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
-    resp = requests.get(url, headers=headers)
-    resp.raise_for_status()
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-    items = soup.select("li.s-item")
-
-    results = []
-    for item in items:
-        # Extract title
-        t = item.select_one(".s-item__title span[role='heading']")
-        # Extract price
-        p = item.select_one(".s-item__price")
-        if not t or not p:
+    raw_results = []
+    for li in soup.find_all("li", attrs={"data-marko-key": True}):
+        info = li.select_one("div.s-item__info.clearfix")
+        if not info:
             continue
-        title = t.get_text(strip=True)
-        price = p.get_text(strip=True)
-        results.append((title, price))
+        title_tag = info.select_one(".s-item__title span[role='heading']")
+        price_tag = info.select_one(".s-item__price")
+        if not title_tag or not price_tag:
+            continue
+        title = title_tag.get_text(strip=True)
+        price = price_tag.get_text(strip=True)
+        raw_results.append((title, price))
 
-    # Remove the first two placeholder entries
-    return results[2:] if len(results) > 2 else []
+    final_results = []
+    seen = set()
+    for title, price in raw_results:
+        low = title.strip().lower()
+        if low.startswith("shop on ebay"):
+            continue
+        key = (title, price)
+        if key in seen:
+            continue
+        seen.add(key)
+        # Remove any "New Listing" text from title
+        clean_title = re.sub(r"(?i)new listing", "", title).strip()
+        final_results.append((clean_title, price))
+
+    return final_results
